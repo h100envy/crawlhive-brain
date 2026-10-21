@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
   title: CrawlHive Brain API
-  version: 1.1.0
+  version: 1.2.0
   description: >
     Read-only lookups into the CrawlHive swarm's memory. No endpoint starts a new scan.
-    Free with a per-IP limit; holders of 100,000 $CRAWLHIVE get 10x (Authorization: Bearer with a bot key
-    chb_/cht_ or a site session); beyond the limit endpoints answer 402 with x402 payment requirements
-    (USDC on Solana). Dumped = fell 50%+ within 24h of the scan, rugs included. Compare rates with baselineDumpRate.
+    Free with a per-IP limit. With Authorization: Bearer (personal key chk_, bot key chb_/cht_ or a site session)
+    limits follow the wallet's tier: Holder 10x, Pro 20x, Whale 50x (crawlhive.xyz/pricing). Over the limit, burn credits
+    bought with $CRAWLHIVE are used first, then endpoints answer 402 with x402 payment requirements (USDC on Solana). Dumped = fell 50%+ within 24h of the scan, rugs included. Compare rates with baselineDumpRate.
   contact:
     url: https://crawlhive.xyz/brain
   license:
@@ -18,7 +18,7 @@ components:
     holder:
       type: http
       scheme: bearer
-      description: Optional. CrawlHive bot key (chb_), OAuth token (cht_) or site session of a wallet holding 100,000 $CRAWLHIVE raises the limits 10x.
+      description: Optional. Personal key (chk_, from crawlhive.xyz/brain), CrawlHive bot key (chb_), OAuth token (cht_) or site session. Limits follow the wallet's tier; burn credits apply after the tier limit.
   parameters:
     address:
       name: address
@@ -28,9 +28,12 @@ components:
       schema: { type: string, pattern: "^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$" }
   headers:
     X-Brain-Tier:
-      schema: { type: string, enum: [free, holder] }
+      schema: { type: string, enum: [free, holder, pro, whale] }
     X-Brain-Limit:
       schema: { type: string, example: 30/10min }
+    X-Brain-Credits:
+      description: Remaining burn credits of the key's wallet
+      schema: { type: integer, example: 4980 }
   schemas:
     Error:
       type: object

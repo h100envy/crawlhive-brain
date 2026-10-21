@@ -105,13 +105,18 @@ if (brain.roles?.sniper && brain.dumpRate > brain.baselineDumpRate) warn("repeat
 | Tier | Lookups (`/wallet`, `/dev`, `/token`, `/operator`) | Batches (`/wallets`) | `/track` |
 | --- | --- | --- | --- |
 | Free, per IP | 30 per 10 min | 5 per 10 min | 60 per 10 min |
-| Holder of 100,000 $CRAWLHIVE | 300 per 10 min | 50 per 10 min | 600 per 10 min |
+| Holder (hold about $25 of $CRAWLHIVE) | 300 per 10 min | 50 per 10 min | 600 per 10 min |
+| Pro (burn about $10 of $CRAWLHIVE per 30 days) | 600 per 10 min | 100 per 10 min | 1,200 per 10 min |
+| Whale (hold about $250 of $CRAWLHIVE) | 1,500 per 10 min | 250 per 10 min | 3,000 per 10 min |
+| Burn credits | about $1 of $CRAWLHIVE per 1,000 calls | 1 credit per batch | free |
 | Pay per call (x402) | $0.002 | $0.02 | always free |
 
-- **Holder tier:** send `Authorization: Bearer <key>`, where the key is a CrawlHive bot key (`chb_…`, made on crawlhive.xyz under Grok Bots), an OAuth token (`cht_…`) or a signed-in site session. The wallet behind it must hold the threshold; the balance is read from Solana.
-- **Pay per call:** when the free limit runs out, the endpoint answers `402 Payment Required` with [x402](https://x402.org) requirements (USDC on Solana). Any x402 client (for example `@x402/fetch` with `@x402/svm`) signs the transfer and repeats the request with the `PAYMENT-SIGNATURE` header. You pay only when the answer succeeds. No account, no API key.
-- **Where the money goes:** Brain revenue is counted with the rest of the x402 revenue that funds $CRAWLHIVE buybacks and burns.
-- Every successful response carries `X-Brain-Tier` (`free` or `holder`) and `X-Brain-Limit`.
+Tiers and live token amounts: [crawlhive.xyz/pricing](https://crawlhive.xyz/pricing). Thresholds follow the live price.
+
+- **Personal key:** sign in on [crawlhive.xyz/brain](https://crawlhive.xyz/brain) and create a key `chk_…` (one per wallet, shown once, stored hashed, rotate or revoke any time). Send it as `Authorization: Bearer chk_…`. Your limits follow your wallet's tier. A CrawlHive bot key (`chb_…`), an OAuth token (`cht_…`) or a signed-in site session work the same way.
+- **Burn credits:** on the Brain page pick a pack (1,000, 5,000 or 20,000 calls) and burn the shown amount of $CRAWLHIVE from your own wallet, signed in Phantom. The server only builds the unsigned transaction and then checks the burn onchain (mint, your signature, amount, signature not reused). It never holds keys or tokens. Credits never expire and are used after your tier limit, before x402. Every burn is listed publicly.
+- **Pay per call:** when limits and credits run out, the endpoint answers `402 Payment Required` with [x402](https://x402.org) requirements (USDC on Solana). Any x402 client (for example `@x402/fetch` with `@x402/svm`) signs the transfer and repeats the request with the `PAYMENT-SIGNATURE` header. You pay only when the answer succeeds. No account, no API key. That revenue funds $CRAWLHIVE buybacks and burns.
+- Responses carry `X-Brain-Tier` (`free`, `holder`, `pro` or `whale`), `X-Brain-Limit` and, with a key, `X-Brain-Credits`.
 
 ## 📏 Reading the answers honestly
 
