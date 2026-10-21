@@ -1,14 +1,65 @@
-# CrawlHive Brain
+<p align="center">
+  <img src="assets/hero.png" alt="CrawlHive Brain: the swarm's memory as an API" width="100%">
+</p>
 
-The memory of the [CrawlHive](https://crawlhive.xyz) swarm, as an API.
+<p align="center">
+  <a href="https://crawlhive.xyz/brain"><img src="https://img.shields.io/badge/API-live-22d3ee?style=for-the-badge" alt="API live"></a>
+  <a href="https://crawlhive.xyz/brain"><img src="https://img.shields.io/badge/free_tier-30_calls_%2F_10_min-a78bfa?style=for-the-badge" alt="Free tier"></a>
+  <a href="https://x402.org"><img src="https://img.shields.io/badge/x402-%240.002_per_call-a3e635?style=for-the-badge" alt="x402"></a>
+  <a href="https://crawlhive.xyz/mcp"><img src="https://img.shields.io/badge/MCP-ready-f472b6?style=for-the-badge" alt="MCP ready"></a>
+</p>
 
-Every scan the swarm runs on Solana, BNB Chain, Base and Robinhood Chain leaves something behind: which wallets sniped, bundled, funded or deployed the token, what the verdict was, and what the price did in the next 24 hours. Brain lets your bot, terminal, wallet or AI agent ask that memory directly. It answers instantly and never starts a new scan.
+<h3 align="center">Know who you're trading against before you ape.</h3>
 
-**Base URL:** `https://crawlhive.xyz/api/brain/v1`
-**Human docs:** [crawlhive.xyz/brain](https://crawlhive.xyz/brain)
-**OpenAPI:** [`openapi.yaml`](openapi.yaml)
+<p align="center">
+  Every memecoin rug leaves fingerprints: the same snipers, the same bundlers, the same devs, coin after coin.<br>
+  <b>CrawlHive Brain remembers them</b> and tells your bot, terminal or AI agent in milliseconds.
+</p>
 
-## What it answers
+<p align="center">
+  <a href="https://crawlhive.xyz/brain"><b>Docs</b></a> ·
+  <a href="#-quick-start"><b>Quick start</b></a> ·
+  <a href="openapi.yaml"><b>OpenAPI</b></a> ·
+  <a href="https://crawlhive.xyz"><b>CrawlHive</b></a> ·
+  <a href="https://x.com/crawlhivexyz"><b>X</b></a> ·
+  <a href="https://t.me/crawlhive"><b>Telegram</b></a>
+</p>
+
+---
+
+## 🧠 Why Brain
+
+A safety scan tells you about one coin. Brain tells you about **the people behind it**.
+
+The [CrawlHive](https://crawlhive.xyz) swarm scans memecoins all day on the site, in the X bot, in Telegram and in the browser extension. Every scan leaves something behind: which wallets sniped, bundled, funded or deployed the token, what the verdict was, and what the chart did in the next 24 hours. Brain turns that memory into an API.
+
+- ⚡ **Instant.** Answers come straight from memory. No new scan, no waiting.
+- 🌐 **Cross-chain.** Solana, BNB Chain, Base and Robinhood Chain in one place.
+- 🔁 **Cross-token.** A sniper from last week's rug is flagged on today's launch.
+- 📏 **Honest.** Every answer ships with the baseline, so you can tell signal from noise.
+- 🤖 **Agent-native.** The same answers are MCP tools for ChatGPT, Claude and any MCP client.
+- 🔥 **Aligned.** Paid calls fund $CRAWLHIVE buybacks and burns.
+
+<p align="center">
+  <img src="assets/neurons.gif" alt="The swarm links wallets across tokens: operators, snipers, devs, funders" width="100%">
+</p>
+
+## 🕸 How the Brain learns
+
+<p align="center">
+  <img src="assets/learn.png" alt="Scan, tag wallets, grade outcomes, answer" width="100%">
+</p>
+
+1. **Every scan** on any CrawlHive surface feeds the swarm.
+2. **Wallets get roles:** sniper, bundle, dev, funder, holder, linked.
+3. **Outcomes are graded** 24 hours later: did the coin dump or rug?
+4. **You ask** and get the full history in one call.
+
+## 🎯 What it answers
+
+<p align="center">
+  <img src="assets/endpoints.png" alt="Wallet, batch, dev, token, track record and MCP tools" width="100%">
+</p>
 
 | Question | Endpoint |
 | --- | --- |
@@ -18,9 +69,37 @@ Every scan the swarm runs on Solana, BNB Chain, Base and Robinhood Chain leaves 
 | What was the last verdict on this token, and what changed since? | `GET /token/{address}` |
 | How often does each verdict actually dump? | `GET /track` |
 
-Addresses can be Solana (base58) or EVM (`0x…`). EVM addresses are matched case-insensitively.
+**Base URL:** `https://crawlhive.xyz/api/brain/v1` · Addresses can be Solana (base58) or EVM (`0x…`, case-insensitive).
 
-## Limits and pricing
+## 🚀 Quick start
+
+No key, no signup. Paste this into your terminal:
+
+```bash
+curl https://crawlhive.xyz/api/brain/v1/track
+```
+
+Screen a coin's top holders in one call:
+
+```bash
+curl -X POST https://crawlhive.xyz/api/brain/v1/wallets \
+  -H "Content-Type: application/json" \
+  -d '{"wallets": ["<wallet 1>", "<wallet 2>", "<up to 100>"]}'
+```
+
+From JavaScript:
+
+```js
+const res = await fetch(`https://crawlhive.xyz/api/brain/v1/wallet/${address}`);
+const brain = await res.json();
+if (brain.roles?.sniper && brain.dumpRate > brain.baselineDumpRate) warn("repeat sniper");
+```
+
+## 💎 Pricing
+
+<p align="center">
+  <img src="assets/tiers.png" alt="Free, holders 10x, pay per call" width="100%">
+</p>
 
 | Tier | Lookups (`/wallet`, `/dev`, `/token`) | Batches (`/wallets`) | `/track` |
 | --- | --- | --- | --- |
@@ -33,14 +112,15 @@ Addresses can be Solana (base58) or EVM (`0x…`). EVM addresses are matched cas
 - **Where the money goes:** Brain revenue is counted with the rest of the x402 revenue that funds $CRAWLHIVE buybacks and burns.
 - Every successful response carries `X-Brain-Tier` (`free` or `holder`) and `X-Brain-Limit`.
 
-## Reading the answers honestly
+## 📏 Reading the answers honestly
+
+We'd rather be useful than impressive.
 
 - **Dumped** means the token fell 50% or more below the scan price within 24 hours of the scan. Rugs count as dumped.
 - **Most memecoins fall.** In our data roughly 4 in 10 tokens we called CLEAN still dumped within 24 hours, against roughly 8 in 10 we called RISKY. Every answer includes `baselineDumpRate`, the share of all graded tokens that dumped. A wallet whose coins dumped at 100% means more next to a 62% baseline than it does on its own.
 - **Memory is bounded.** It keeps the most recent 8,000 wallets (20 tokens each) and 5,000 tokens (10 snapshots each). "Not seen" means the swarm has not met the wallet, not that it is clean.
 - **Outcome `untracked`** means the swarm saw the wallet on a token whose price it did not follow.
-
-Every verdict is also committed to Solana every 15 minutes as a Merkle root, so a past verdict can be proven, not just claimed: see `/api/proof` on the main site.
+- **Provable.** Every verdict is committed to Solana every 15 minutes as a Merkle root, so a past verdict can be proven, not just claimed: see `/api/proof` on the main site.
 
 ## Examples
 
@@ -188,3 +268,10 @@ The same answers are tools in the CrawlHive MCP server at `https://crawlhive.xyz
 - Telegram: https://t.me/crawlhive
 
 Not financial advice.
+
+---
+
+<p align="center">
+  <b>Build something that knows the trenches.</b><br>
+  <a href="https://crawlhive.xyz/brain">crawlhive.xyz/brain</a>
+</p>
