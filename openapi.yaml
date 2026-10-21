@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CrawlHive Brain API
-  version: 1.2.0
+  version: 1.3.0
   description: >
     Read-only lookups into the CrawlHive swarm's memory. No endpoint starts a new scan.
     Free with a per-IP limit. With Authorization: Bearer (personal key chk_, bot key chb_/cht_ or a site session)
@@ -63,6 +63,17 @@ components:
         score: { type: [integer, "null"] }
         level: { type: string, enum: [low, medium, high, unknown] }
         reasons: { type: array, items: { type: string } }
+    Evidence:
+      type: [object, "null"]
+      description: Launch evidence for dev, factory and pool entries. Null fields were not proven.
+      properties:
+        tx: { type: [string, "null"] }
+        txUrl: { type: [string, "null"] }
+        launchedAt: { type: [string, "null"], format: date-time }
+        seenBySwarmAt: { type: [string, "null"], format: date-time, description: when the swarm first saw the coin }
+        deployer: { type: [string, "null"], description: wallet that signed the launch }
+        factory: { type: [string, "null"], description: launchpad or factory contract }
+        poolCreator: { type: [string, "null"] }
     OperatorBrief:
       type: [object, "null"]
       properties:
@@ -71,6 +82,7 @@ components:
         tokens: { type: integer }
         dumpRate: { type: [number, "null"] }
         settled: { type: integer }
+        strong: { type: boolean, description: true when the operator has bundles or dev money; false when it is linked mostly by shared funders (a connection, not proof of common control) }
     OperatorReport:
       type: object
       properties:
@@ -85,6 +97,7 @@ components:
         baselineDumpRate: { type: [number, "null"] }
         firstSeen: { type: [string, "null"], format: date-time }
         lastSeen: { type: [string, "null"], format: date-time }
+        linkedBy: { type: string, description: "bundles or dev money (strong), or mostly shared funders" }
         coins:
           type: array
           items:
@@ -116,7 +129,8 @@ components:
             properties:
               token: { type: string }
               chain: { type: string }
-              role: { type: string, enum: [sniper, bundle, dev, funder, holder, linked] }
+              role: { type: string, enum: [sniper, bundle, dev, factory, pool, funder, holder, linked] }
+              evidence: { $ref: "#/components/schemas/Evidence" }
               symbol: { type: [string, "null"] }
               verdict: { type: [string, "null"], enum: [CLEAN, OK, RISKY, DANGER, TOO_EARLY, null] }
               score: { type: [integer, "null"] }
@@ -162,6 +176,14 @@ components:
               symbol: { type: [string, "null"] }
               verdict: { type: [string, "null"] }
               outcome: { $ref: "#/components/schemas/Outcome" }
+              evidence: { $ref: "#/components/schemas/Evidence" }
+        factory:
+          type: [object, "null"]
+          description: filled when the address is a launchpad or factory contract
+          properties:
+            coins: { type: integer }
+            deployers: { type: array, items: { type: string } }
+            note: { type: string }
         otherRoles: { type: array, items: { type: string } }
         pumpfun:
           type: [object, "null"]

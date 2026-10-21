@@ -163,15 +163,19 @@ curl https://crawlhive.xyz/api/brain/v1/wallet/5g8bviwgHv6gKzCerSjQbFoYxfHnWawNL
 
 `operator` is filled when the wallet belongs to one: `{ "id": "op_135334568589", "wallets": 7, "tokens": 3, "dumpRate": 1, "settled": 3 }`.
 
-Roles: `sniper` (bought in the first seconds), `bundle` (bought in the same transaction or block as other wallets), `dev` (created the token), `funder` (funded two or more wallets of the token), `holder` (holds inside a linked operator), `linked` (linked to the operator by transfers).
+Roles: `sniper` (bought in the first seconds), `bundle` (bought in the same transaction or block as other wallets), `dev` (the wallet that signed the launch), `factory` (a launchpad or factory contract that creates tokens for many deployers, never counted as a person), `pool` (created the liquidity pool), `funder` (funded two or more wallets of the token), `holder` (holds inside a linked group), `linked` (linked to the group).
+
+History entries for `dev`, `factory` and `pool` carry `evidence`: the launch `tx` and `txUrl` (Solscan, BscScan, BaseScan or the Robinhood explorer), `launchedAt`, `seenBySwarmAt` (when the swarm first saw the coin), `deployer`, `factory` and `poolCreator`. Fields the swarm could not prove are `null`.
+
+**How links are made.** Wallets are linked by the same transaction or block (bundle), direct transfers of the token, money or tokens from the dev, or a shared funder. A shared funder is a connection, not proof of common control, so groups held together only by shared funders weigh less in the scan score and in the wallet risk.
 
 ### Risk score
 
 Every wallet (single or batch) gets `risk`: a score from 0 to 100, a level and the reasons behind it. The formula is simple on purpose:
 
 1. **Dump rate, shrunk toward the baseline.** `p = (dumped + 4 × baseline) / (settled + 4)`. A wallet with 1 of 1 dumped coins looks almost average; one with 9 of 10 does not. Mapped so that the baseline is 0.5 and "every coin dumped" is 1.
-2. **Role weight.** The heaviest role the wallet ever had: dev 1.0, funder 0.9, bundle 0.85, sniper 0.6, holder 0.4, linked 0.3.
-3. **Operator record.** The same shrunk dump rate for the wallet's operator, 0.5 when it has none.
+2. **Role weight.** The heaviest role the wallet ever had: dev 1.0, funder 0.9, bundle 0.85, sniper 0.6, pool 0.5, holder 0.4, linked 0.3, factory 0.05. A wallet that is only a `factory` gets score `null`: its record is many deployers', not one person's.
+3. **Operator record.** The same shrunk dump rate for the wallet's operator, 0.5 when it has none. If the operator has no bundles or dev money (linked mostly by shared funders), its pull away from 0.5 is cut to one third.
 
 `score = 100 × (0.6 × dump rate + 0.25 × role + 0.15 × operator)`. **high** is 65 and above, **medium** 50 to 64, **low** under 50. **unknown** (score `null`) when neither the wallet nor its operator has a graded coin yet. It is a reading of past behaviour, not a prediction.
 
@@ -200,7 +204,7 @@ curl https://crawlhive.xyz/api/brain/v1/operator/op_135334568589
 }
 ```
 
-An operator is a set of wallets the swarm saw in the same linked group (shared funder, bundle or dev) on 2 or more different coins. Operators are rebuilt every 10 minutes. The id is stable until two operators merge, so look ids up from fresh wallet answers. Wallets that show up in groups on more than 60 coins (routers, shared services) are left out.
+An operator is a set of wallets the swarm saw in the same linked group (bundle, dev money, transfers or a shared funder) on 2 or more different coins. `linkedBy` says whether it is held together by bundles or dev money (strong) or mostly by shared funders, which is a connection, not proof of common control. Operators are rebuilt every 10 minutes. The id is stable until two operators merge, so look ids up from fresh wallet answers. Wallets that show up in groups on more than 60 coins (routers, shared services) are left out.
 
 ### Batch
 
@@ -244,7 +248,7 @@ curl https://crawlhive.xyz/api/brain/v1/dev/5S3q74BX8aMDG2s3bzFxQoJur7z5opHtsvB2
 }
 ```
 
-`pumpfun` is filled for Solana wallets only. EVM devs are answered from the swarm's memory.
+`pumpfun` is filled for Solana wallets only. EVM devs are answered from the swarm's memory. Every launch carries `evidence` (launch tx, launch time, first seen by the swarm). If the address is a launchpad or factory contract, `factory` lists how many coins it created and the real deployers behind them, with a note that these are not one person's launches.
 
 ### Token
 
