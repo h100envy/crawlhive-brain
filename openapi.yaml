@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: CrawlHive Brain API
-  version: 1.0.0
+  version: 1.1.0
   description: >
     Read-only lookups into the CrawlHive swarm's memory. No endpoint starts a new scan.
     Free with a per-IP limit; holders of 100,000 $CRAWLHIVE get 10x (Authorization: Bearer with a bot key
@@ -53,6 +53,46 @@ components:
       description: count of tokens per role
       additionalProperties: { type: integer }
       example: { sniper: 4, bundle: 2 }
+    Risk:
+      type: object
+      description: "0-100 reading of past behaviour: dump rate shrunk toward the baseline (prior of 4 coins), heaviest role weight and operator record. high >= 65, medium 50-64, low < 50, unknown when nothing is graded."
+      properties:
+        score: { type: [integer, "null"] }
+        level: { type: string, enum: [low, medium, high, unknown] }
+        reasons: { type: array, items: { type: string } }
+    OperatorBrief:
+      type: [object, "null"]
+      properties:
+        id: { type: string, example: op_135334568589 }
+        wallets: { type: integer }
+        tokens: { type: integer }
+        dumpRate: { type: [number, "null"] }
+        settled: { type: integer }
+    OperatorReport:
+      type: object
+      properties:
+        id: { type: string }
+        wallets: { type: integer }
+        members: { type: array, items: { type: string }, description: up to 200 wallets }
+        tokens: { type: integer }
+        chains: { type: array, items: { type: string } }
+        roles: { $ref: "#/components/schemas/Roles" }
+        outcomes: { $ref: "#/components/schemas/Outcomes" }
+        dumpRate: { type: [number, "null"] }
+        baselineDumpRate: { type: [number, "null"] }
+        firstSeen: { type: [string, "null"], format: date-time }
+        lastSeen: { type: [string, "null"], format: date-time }
+        coins:
+          type: array
+          items:
+            type: object
+            properties:
+              token: { type: string }
+              symbol: { type: [string, "null"] }
+              verdict: { type: [string, "null"] }
+              outcome: { $ref: "#/components/schemas/Outcome" }
+              at: { type: [integer, "null"], description: ms timestamp }
+        notes: { type: string }
     WalletReport:
       type: object
       properties:
@@ -64,6 +104,8 @@ components:
         outcomes: { $ref: "#/components/schemas/Outcomes" }
         dumpRate: { type: [number, "null"] }
         baselineDumpRate: { type: [number, "null"] }
+        risk: { $ref: "#/components/schemas/Risk" }
+        operator: { $ref: "#/components/schemas/OperatorBrief" }
         history:
           type: array
           items:
@@ -79,13 +121,15 @@ components:
               outcome: { $ref: "#/components/schemas/Outcome" }
         memory:
           type: object
-          properties: { wallets: { type: integer }, cap: { type: integer }, tokensPerWallet: { type: integer } }
+          properties: { wallets: { type: integer }, cap: { type: [integer, "null"], description: null when memory has no cap }, tokensPerWallet: { type: [integer, "null"] }, store: { type: string, enum: [sqlite, meta] } }
         notes: { type: string }
     BatchReport:
       type: object
       properties:
         checked: { type: integer }
         seen: { type: integer }
+        highRisk: { type: integer, description: wallets with risk level high }
+        operators: { type: array, items: { type: string }, description: operator ids among the wallets }
         baselineDumpRate: { type: [number, "null"] }
         results:
           type: array
@@ -98,6 +142,8 @@ components:
               roles: { $ref: "#/components/schemas/Roles" }
               outcomes: { $ref: "#/components/schemas/Outcomes" }
               dumpRate: { type: [number, "null"] }
+              risk: { $ref: "#/components/schemas/Risk" }
+              operator: { $ref: "#/components/schemas/OperatorBrief" }
     DevReport:
       type: object
       properties:
@@ -250,6 +296,18 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "402": { $ref: "#/components/responses/PaymentRequired" }
         "404": { description: Never scanned, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /operator/{id}:
+    get:
+      operationId: brainOperator
+      summary: Wallets the swarm saw linked together on 2+ coins, their coins and outcomes
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, pattern: "^op_[a-f0-9]{12}$" }, example: op_135334568589 }]
+      x-payment-info: { price: { mode: fixed, currency: USD, amount: "0.002" }, protocols: [x402] }
+      responses:
+        "200": { description: Operator report, content: { application/json: { schema: { $ref: "#/components/schemas/OperatorReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "402": { $ref: "#/components/responses/PaymentRequired" }
+        "404": { description: No such operator (ids can change when two operators merge), content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/TooMany" }
   /track:
     get:

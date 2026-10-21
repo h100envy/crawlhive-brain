@@ -67,6 +67,7 @@ The [CrawlHive](https://crawlhive.xyz) swarm scans memecoins all day on the site
 | Which of these 100 wallets have a history? | `POST /wallets` |
 | What did this dev launch before, and how did it go? | `GET /dev/{address}` |
 | What was the last verdict on this token, and what changed since? | `GET /token/{address}` |
+| Which wallets keep working together across coins, and how did their coins end? | `GET /operator/{id}` |
 | How often does each verdict actually dump? | `GET /track` |
 
 **Base URL:** `https://crawlhive.xyz/api/brain/v1` · Addresses can be Solana (base58) or EVM (`0x…`, case-insensitive).
@@ -101,7 +102,7 @@ if (brain.roles?.sniper && brain.dumpRate > brain.baselineDumpRate) warn("repeat
   <img src="assets/tiers.png" alt="Free, holders 10x, pay per call" width="100%">
 </p>
 
-| Tier | Lookups (`/wallet`, `/dev`, `/token`) | Batches (`/wallets`) | `/track` |
+| Tier | Lookups (`/wallet`, `/dev`, `/token`, `/operator`) | Batches (`/wallets`) | `/track` |
 | --- | --- | --- | --- |
 | Free, per IP | 30 per 10 min | 5 per 10 min | 60 per 10 min |
 | Holder of 100,000 $CRAWLHIVE | 300 per 10 min | 50 per 10 min | 600 per 10 min |
@@ -118,7 +119,7 @@ We'd rather be useful than impressive.
 
 - **Dumped** means the token fell 50% or more below the scan price within 24 hours of the scan. Rugs count as dumped.
 - **Most memecoins fall.** In our data roughly 4 in 10 tokens we called CLEAN still dumped within 24 hours, against roughly 8 in 10 we called RISKY. Every answer includes `baselineDumpRate`, the share of all graded tokens that dumped. A wallet whose coins dumped at 100% means more next to a 62% baseline than it does on its own.
-- **Memory is bounded.** It keeps the most recent 8,000 wallets (20 tokens each) and 5,000 tokens (10 snapshots each). "Not seen" means the swarm has not met the wallet, not that it is clean.
+- **Memory keeps growing.** Wallet memory lives in a database with no wallet cap, so a sniper from weeks ago is still there. Token snapshots keep the latest 5,000 tokens (10 snapshots each). "Not seen" means the swarm has not met the wallet, not that it is clean.
 - **Outcome `untracked`** means the swarm saw the wallet on a token whose price it did not follow.
 - **Provable.** Every verdict is committed to Solana every 15 minutes as a Merkle root, so a past verdict can be proven, not just claimed: see `/api/proof` on the main site.
 
@@ -142,14 +143,59 @@ curl https://crawlhive.xyz/api/brain/v1/wallet/5g8bviwgHv6gKzCerSjQbFoYxfHnWawNL
   "outcomes": { "settled": 2, "dumped": 2, "rugged": 1, "survived": 0, "open": 1, "untracked": 5 },
   "dumpRate": 1,
   "baselineDumpRate": 0.619,
+  "risk": {
+    "score": 62,
+    "level": "medium",
+    "reasons": ["2 of 2 graded coins dumped (baseline 62%)", "Few graded coins, score pulled toward the baseline", "Sniped 1 coin"]
+  },
+  "operator": null,
   "history": [
     { "token": "goatcZCkcoHEZaBvrmxPtT89yS7gDzcZx1aSrVCcrLu", "chain": "solana", "role": "linked", "symbol": "GOAT", "verdict": "RISKY", "score": 50, "scannedAt": "2026-10-19T22:50:46.855Z", "outcome": "dumped" }
   ],
-  "memory": { "wallets": 8000, "cap": 8000, "tokensPerWallet": 20 }
+  "memory": { "wallets": 8000, "cap": null, "tokensPerWallet": null, "store": "sqlite" }
 }
 ```
 
+`operator` is filled when the wallet belongs to one: `{ "id": "op_135334568589", "wallets": 7, "tokens": 3, "dumpRate": 1, "settled": 3 }`.
+
 Roles: `sniper` (bought in the first seconds), `bundle` (bought in the same transaction or block as other wallets), `dev` (created the token), `funder` (funded two or more wallets of the token), `holder` (holds inside a linked operator), `linked` (linked to the operator by transfers).
+
+### Risk score
+
+Every wallet (single or batch) gets `risk`: a score from 0 to 100, a level and the reasons behind it. The formula is simple on purpose:
+
+1. **Dump rate, shrunk toward the baseline.** `p = (dumped + 4 × baseline) / (settled + 4)`. A wallet with 1 of 1 dumped coins looks almost average; one with 9 of 10 does not. Mapped so that the baseline is 0.5 and "every coin dumped" is 1.
+2. **Role weight.** The heaviest role the wallet ever had: dev 1.0, funder 0.9, bundle 0.85, sniper 0.6, holder 0.4, linked 0.3.
+3. **Operator record.** The same shrunk dump rate for the wallet's operator, 0.5 when it has none.
+
+`score = 100 × (0.6 × dump rate + 0.25 × role + 0.15 × operator)`. **high** is 65 and above, **medium** 50 to 64, **low** under 50. **unknown** (score `null`) when neither the wallet nor its operator has a graded coin yet. It is a reading of past behaviour, not a prediction.
+
+### Operator
+
+```bash
+curl https://crawlhive.xyz/api/brain/v1/operator/op_135334568589
+```
+
+```json
+{
+  "id": "op_135334568589",
+  "wallets": 7,
+  "members": ["2q6uqUs8P3y7sKLK7uezaRtvRSNRBBPh1hshf55CFVhS", "…"],
+  "tokens": 3,
+  "chains": ["solana"],
+  "roles": { "bundle": 12, "funder": 3, "linked": 3 },
+  "outcomes": { "settled": 3, "dumped": 3, "rugged": 3, "survived": 0, "open": 0, "untracked": 0 },
+  "dumpRate": 1,
+  "baselineDumpRate": 0.618,
+  "firstSeen": "2026-10-20T21:59:11.378Z",
+  "lastSeen": "2026-10-21T06:57:35.011Z",
+  "coins": [
+    { "token": "8FGreSHZeiinbu3zPeBA3vawxvz2phvyomnPn1NEpump", "symbol": "CLOUT", "verdict": "RISKY", "outcome": "rugged", "at": 1792565855011 }
+  ]
+}
+```
+
+An operator is a set of wallets the swarm saw in the same linked group (shared funder, bundle or dev) on 2 or more different coins. Operators are rebuilt every 10 minutes. The id is stable until two operators merge, so look ids up from fresh wallet answers. Wallets that show up in groups on more than 60 coins (routers, shared services) are left out.
 
 ### Batch
 
@@ -253,7 +299,7 @@ Errors are JSON: `{ "error": "message" }`.
 
 ## For AI agents
 
-The same answers are tools in the CrawlHive MCP server at `https://crawlhive.xyz/mcp`: `brain_wallet`, `brain_wallets`, `brain_dev`, `brain_token` and `brain_track`. Connect with a bot key or the OAuth Connect button (ChatGPT, Claude and other MCP clients). The A2A agent at `https://crawlhive.xyz/a2a` understands `wallet <address>`.
+The same answers are tools in the CrawlHive MCP server at `https://crawlhive.xyz/mcp`: `brain_wallet`, `brain_wallets`, `brain_dev`, `brain_token`, `brain_operator` and `brain_track`. Connect with a bot key or the OAuth Connect button (ChatGPT, Claude and other MCP clients). The A2A agent at `https://crawlhive.xyz/a2a` understands `wallet <address>`.
 
 ## Related APIs
 
