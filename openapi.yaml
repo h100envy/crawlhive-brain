@@ -1,0 +1,260 @@
+openapi: 3.1.0
+info:
+  title: CrawlHive Brain API
+  version: 1.0.0
+  description: >
+    Read-only lookups into the CrawlHive swarm's memory. No endpoint starts a new scan.
+    Free with a per-IP limit; holders of 100,000 $CRAWLHIVE get 10x (Authorization: Bearer with a bot key
+    chb_/cht_ or a site session); beyond the limit endpoints answer 402 with x402 payment requirements
+    (USDC on Solana). Dumped = fell 50%+ within 24h of the scan, rugs included. Compare rates with baselineDumpRate.
+  contact:
+    url: https://crawlhive.xyz/brain
+  license:
+    name: MIT
+servers:
+  - url: https://crawlhive.xyz/api/brain/v1
+components:
+  securitySchemes:
+    holder:
+      type: http
+      scheme: bearer
+      description: Optional. CrawlHive bot key (chb_), OAuth token (cht_) or site session of a wallet holding 100,000 $CRAWLHIVE raises the limits 10x.
+  parameters:
+    address:
+      name: address
+      in: path
+      required: true
+      description: Solana (base58) or EVM (0x...) address
+      schema: { type: string, pattern: "^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$" }
+  headers:
+    X-Brain-Tier:
+      schema: { type: string, enum: [free, holder] }
+    X-Brain-Limit:
+      schema: { type: string, example: 30/10min }
+  schemas:
+    Error:
+      type: object
+      properties: { error: { type: string } }
+      required: [error]
+    Outcome:
+      type: string
+      enum: [rugged, dumped, survived, open, untracked]
+    Outcomes:
+      type: object
+      properties:
+        settled: { type: integer, description: dumped + survived }
+        dumped: { type: integer, description: rugs included }
+        rugged: { type: integer }
+        survived: { type: integer }
+        open: { type: integer, description: tracked, less than 24h old }
+        untracked: { type: integer, description: the swarm did not follow this token's price }
+    Roles:
+      type: object
+      description: count of tokens per role
+      additionalProperties: { type: integer }
+      example: { sniper: 4, bundle: 2 }
+    WalletReport:
+      type: object
+      properties:
+        wallet: { type: string }
+        seen: { type: boolean }
+        tokens: { type: integer }
+        chains: { type: array, items: { type: string, enum: [solana, bsc, base, robinhood] } }
+        roles: { $ref: "#/components/schemas/Roles" }
+        outcomes: { $ref: "#/components/schemas/Outcomes" }
+        dumpRate: { type: [number, "null"] }
+        baselineDumpRate: { type: [number, "null"] }
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              token: { type: string }
+              chain: { type: string }
+              role: { type: string, enum: [sniper, bundle, dev, funder, holder, linked] }
+              symbol: { type: [string, "null"] }
+              verdict: { type: [string, "null"], enum: [CLEAN, OK, RISKY, DANGER, TOO_EARLY, null] }
+              score: { type: [integer, "null"] }
+              scannedAt: { type: [string, "null"], format: date-time }
+              outcome: { $ref: "#/components/schemas/Outcome" }
+        memory:
+          type: object
+          properties: { wallets: { type: integer }, cap: { type: integer }, tokensPerWallet: { type: integer } }
+        notes: { type: string }
+    BatchReport:
+      type: object
+      properties:
+        checked: { type: integer }
+        seen: { type: integer }
+        baselineDumpRate: { type: [number, "null"] }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              wallet: { type: string }
+              seen: { type: boolean }
+              tokens: { type: integer }
+              roles: { $ref: "#/components/schemas/Roles" }
+              outcomes: { $ref: "#/components/schemas/Outcomes" }
+              dumpRate: { type: [number, "null"] }
+    DevReport:
+      type: object
+      properties:
+        dev: { type: string }
+        seenAsDev: { type: integer }
+        launches:
+          type: array
+          items:
+            type: object
+            properties:
+              token: { type: string }
+              chain: { type: string }
+              symbol: { type: [string, "null"] }
+              verdict: { type: [string, "null"] }
+              outcome: { $ref: "#/components/schemas/Outcome" }
+        otherRoles: { type: array, items: { type: string } }
+        pumpfun:
+          type: [object, "null"]
+          description: Solana only. pump.fun launch history.
+          properties:
+            launched: { type: integer }
+            graduated: { type: integer }
+            verdict: { type: string, enum: [serial, weak, solid, new, mixed] }
+            summary: { type: object }
+            coins: { type: array, items: { type: object } }
+        pumpfunError: { type: [string, "null"] }
+        baselineDumpRate: { type: [number, "null"] }
+    TokenReport:
+      type: object
+      properties:
+        token: { type: string }
+        chain: { type: [string, "null"] }
+        symbol: { type: [string, "null"] }
+        latest:
+          type: object
+          properties:
+            verdict: { type: string }
+            score: { type: [integer, "null"] }
+            reason: { type: [string, "null"] }
+            scannedAt: { type: string, format: date-time }
+        since:
+          type: [object, "null"]
+          properties:
+            prevAt: { type: string, format: date-time }
+            changes:
+              type: array
+              items:
+                type: object
+                properties:
+                  label: { type: string }
+                  from: { type: string }
+                  to: { type: string }
+                  tone: { type: string, enum: [bad, good, info] }
+        snapshots: { type: array, items: { type: object } }
+        outcome:
+          type: object
+          properties:
+            status: { $ref: "#/components/schemas/Outcome" }
+            verdictAtScan: { type: string }
+            scannedAt: { type: string, format: date-time }
+            peakPct: { type: [number, "null"] }
+            lowPct: { type: [number, "null"] }
+            lastPct: { type: [number, "null"] }
+        scanUrl: { type: string }
+    TrackReport:
+      type: object
+      properties:
+        windowHours: { type: integer }
+        dumpThresholdPct: { type: number }
+        since: { type: [string, "null"], format: date-time }
+        tracked: { type: integer }
+        verdicts:
+          type: array
+          items:
+            type: object
+            properties:
+              verdict: { type: string }
+              tracked: { type: integer }
+              settled: { type: integer }
+              dumped: { type: integer }
+              rugged: { type: integer }
+              medianPeak: { type: [number, "null"] }
+              dumpRate: { type: [number, "null"] }
+        baselineDumpRate: { type: [number, "null"] }
+  responses:
+    BadRequest:
+      description: Not a valid address or bad body
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    PaymentRequired:
+      description: Free limit reached. x402 v2 requirements in the PAYMENT-REQUIRED header, v1 in the body. Repeat with PAYMENT-SIGNATURE.
+    TooMany:
+      description: Rate limited
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+security:
+  - {}
+  - holder: []
+paths:
+  /wallet/{address}:
+    get:
+      operationId: brainWallet
+      summary: What the swarm remembers about a wallet
+      parameters: [{ $ref: "#/components/parameters/address" }]
+      x-payment-info: { price: { mode: fixed, currency: USD, amount: "0.002" }, protocols: [x402] }
+      responses:
+        "200":
+          description: Wallet report
+          headers: { X-Brain-Tier: { $ref: "#/components/headers/X-Brain-Tier" }, X-Brain-Limit: { $ref: "#/components/headers/X-Brain-Limit" } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/WalletReport" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "402": { $ref: "#/components/responses/PaymentRequired" }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /wallets:
+    post:
+      operationId: brainWallets
+      summary: Batch screen up to 100 wallets
+      x-payment-info: { price: { mode: fixed, currency: USD, amount: "0.02" }, protocols: [x402] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { wallets: { type: array, items: { type: string }, minItems: 1, maxItems: 100 } }
+              required: [wallets]
+      responses:
+        "200": { description: Batch report, content: { application/json: { schema: { $ref: "#/components/schemas/BatchReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "402": { $ref: "#/components/responses/PaymentRequired" }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /dev/{address}:
+    get:
+      operationId: brainDev
+      summary: Dev reputation
+      parameters: [{ $ref: "#/components/parameters/address" }]
+      x-payment-info: { price: { mode: fixed, currency: USD, amount: "0.002" }, protocols: [x402] }
+      responses:
+        "200": { description: Dev report, content: { application/json: { schema: { $ref: "#/components/schemas/DevReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "402": { $ref: "#/components/responses/PaymentRequired" }
+        "404": { description: No memory of this dev, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /token/{address}:
+    get:
+      operationId: brainToken
+      summary: Last verdict, snapshots, changes and 24h outcome of a token scanned before
+      parameters: [{ $ref: "#/components/parameters/address" }]
+      x-payment-info: { price: { mode: fixed, currency: USD, amount: "0.002" }, protocols: [x402] }
+      responses:
+        "200": { description: Token report, content: { application/json: { schema: { $ref: "#/components/schemas/TokenReport" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "402": { $ref: "#/components/responses/PaymentRequired" }
+        "404": { description: Never scanned, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooMany" }
+  /track:
+    get:
+      operationId: brainTrack
+      summary: Dump rate per verdict, always free
+      responses:
+        "200": { description: Track report, content: { application/json: { schema: { $ref: "#/components/schemas/TrackReport" } } } }
+        "429": { $ref: "#/components/responses/TooMany" }
