@@ -105,13 +105,13 @@ if (brain.roles?.sniper && brain.dumpRate > brain.baselineDumpRate) warn("repeat
 | Tier | Lookups (`/wallet`, `/dev`, `/token`, `/operator`) | Batches (`/wallets`) | `/track` |
 | --- | --- | --- | --- |
 | Free, per IP | 30 per 10 min | 5 per 10 min | 60 per 10 min |
-| Holder (hold about $25 of $CRAWLHIVE) | 300 per 10 min | 50 per 10 min | 600 per 10 min |
+| Holder (hold 100,000 $CRAWLHIVE or $25 worth, whichever is less) | 300 per 10 min | 50 per 10 min | 600 per 10 min |
 | Pro (burn about $10 of $CRAWLHIVE per 30 days) | 600 per 10 min | 100 per 10 min | 1,200 per 10 min |
-| Whale (hold about $250 of $CRAWLHIVE) | 1,500 per 10 min | 250 per 10 min | 3,000 per 10 min |
+| Whale (hold 1,000,000 $CRAWLHIVE or $250 worth, whichever is less) | 1,500 per 10 min | 250 per 10 min | 3,000 per 10 min |
 | Burn credits | about $1 of $CRAWLHIVE per 1,000 calls | 1 credit per batch | free |
 | Pay per call (x402) | $0.002 | $0.02 | always free |
 
-Tiers and live token amounts: [crawlhive.xyz/pricing](https://crawlhive.xyz/pricing). Thresholds follow the live price.
+Tiers and live token amounts: [crawlhive.xyz/pricing](https://crawlhive.xyz/pricing).
 
 - **Personal key:** sign in on [crawlhive.xyz/brain](https://crawlhive.xyz/brain) and create a key `chk_…` (one per wallet, shown once, stored hashed, rotate or revoke any time). Send it as `Authorization: Bearer chk_…`. Your limits follow your wallet's tier. A CrawlHive bot key (`chb_…`), an OAuth token (`cht_…`) or a signed-in site session work the same way.
 - **Burn credits:** on the Brain page pick a pack (1,000, 5,000 or 20,000 calls) and burn the shown amount of $CRAWLHIVE from your own wallet, signed in Phantom. The server only builds the unsigned transaction and then checks the burn onchain (mint, your signature, amount, signature not reused). It never holds keys or tokens. Credits never expire and are used after your tier limit, before x402. Every burn is listed publicly.
